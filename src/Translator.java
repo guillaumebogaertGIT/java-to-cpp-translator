@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -8,6 +9,22 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+=======
+import java.util.Scanner;
+import java.io.File;
+import java.io.FileNotFoundException;
+
+public class Translator {
+    File file = new File ("Example.java");
+
+public void readFile() throws FileNotFoundException {
+    Scanner scanner = new Scanner (file);
+    while (scanner.hasNextLine()) {
+        String line = scanner.nextLine();
+        System.out.println(line);
+        
+    }
+>>>>>>> 85306c8bace4f60547470739f12cffac7fdd29bf
 
 public class Translator {
     private final Set<String> stringVariables = new HashSet<>();
@@ -464,4 +481,5 @@ public class Translator {
         Files.createDirectories(out.getParent() == null ? Paths.get(".") : out.getParent());
         Files.writeString(out, translated);
     }
+}
 }
