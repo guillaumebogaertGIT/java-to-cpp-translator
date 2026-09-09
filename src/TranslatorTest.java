@@ -40,12 +40,67 @@ public class TranslatorTest {
         testScanner();
         testArrays();
         testArrayLengths();
+        testMethods();
         System.out.println("Passed " + checks + " translation checks.");
     }
 
     private static void require(boolean condition, String message) {
         if (!condition) throw new AssertionError(message);
         checks++;
+    }
+
+    private static void testMethods() {
+        Translator translator = new Translator();
+        check(translator, "public static int square(int number) {", "int square(int number) {");
+        check(translator, "return number * number;", "return number * number;");
+        check(translator, "public static double average(double a, double b) {", "double average(double a, double b) {");
+        check(translator, "return (a + b) / 2.0;", "return (a + b) / 2.0;");
+        check(translator, "public static boolean enabled(boolean flag, int count) {", "bool enabled(bool flag, int count) {");
+        check(translator, "return flag && count > 0;", "return flag && count > 0;");
+        check(translator, "public static void announce(String text) {", "void announce(std::string text) {");
+        check(translator, "System.out.println(text + 1);", "std::cout << text << 1 << std::endl;");
+        check(translator, "return;", "return;");
+        check(translator, "public static int answer() {", "int answer() {");
+        check(translator, "return 42;", "return 42;");
+        check(translator, "public static String greeting(String name) {", "std::string greeting(std::string name) {");
+        check(translator, "return \"Hello \" + name;", String.join(System.lineSeparator(),
+                "{", "        std::ostringstream translatedReturnText;",
+                "        translatedReturnText << std::boolalpha << \"Hello \" << name;",
+                "        return translatedReturnText.str();", "    }"));
+        check(translator, "return name;", "return name;");
+        check(translator, "return \"Hello\";", "return \"Hello\";");
+        check(translator, "public static int reuse(int name) {", "int reuse(int name) {");
+        check(translator, "System.out.println(name + 1);", "std::cout << (name + 1) << std::endl;");
+        check(translator, "public static void mainHelper() {", "void mainHelper() {");
+        check(translator, "square(5);", "square(5);");
+        check(translator, "int result = square(5);", "int result = square(5);");
+
+        String code = translator.translate(String.join("\n",
+                "public class MethodExample {", "public static void main(String[] args) {",
+                "System.out.println(square(5));", "System.out.println(greeting(\"Ada\"));", "}",
+                "public static int square(int number) {", "return number * number;", "}",
+                "public static String greeting(String name) {", "return \"Hello \" + name;", "}", "}"));
+        require(code.indexOf("int square(int number);") < code.indexOf("int main()"),
+                "Methods declared before main can be defined after it");
+        require(code.contains("std::string greeting(std::string name);") && code.contains("#include <sstream>"),
+                "String methods have prototypes and the needed stream header");
+        require(code.contains("std::cout << (greeting(\"Ada\")) << std::endl;"), "Method calls work in print");
+        String numeric = translator.translate(String.join("\n", "public class Numeric {",
+                "public static int square(int number) {", "return number * number;", "}", "}"));
+        require(!numeric.contains("#include <sstream>") && !numeric.contains("greeting"),
+                "Method state resets and numeric methods do not need sstream");
+        try {
+            translator.translateLine("public static int square(double number) {");
+            throw new AssertionError("Overloads must be rejected");
+        } catch (IllegalArgumentException expected) {
+            checks++;
+        }
+        try {
+            translator.translateLine("public static int size(int[] numbers) {");
+            throw new AssertionError("Array parameters are outside the supported subset");
+        } catch (IllegalArgumentException expected) {
+            checks++;
+        }
     }
 
     private static void testScanner() {

@@ -16,7 +16,15 @@ public class Translator {
     private final Set<String> arrayVariables = new HashSet<>();
     private boolean inBlockComment;
     private boolean usesArrays;
+    private String returnType;
+    private boolean usesStringReturnStream;
+    private final List<String> methodDeclarations = new ArrayList<>();
+    private final Set<String> methodNames = new HashSet<>();
     private static final String IDENTIFIER = "[A-Za-z_][A-Za-z0-9_]*";
+    private static final Pattern METHOD = Pattern.compile(
+            "public\\s+static\\s+(void|int|double|boolean|String)\\s+(" + IDENTIFIER + ")\\s*\\(([^()]*)\\)\\s*\\{");
+    private static final Pattern PARAMETER = Pattern.compile(
+            "(int|double|boolean|String)\\s+(" + IDENTIFIER + ")");
     // Match literals/comments first so their contents are never rewritten.
     private static final Pattern ARRAY_LENGTH = Pattern.compile(
             "\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'|//.*|/\\*.*?(?:\\*/|$)"
@@ -60,12 +68,39 @@ public class Translator {
             return "";
         }
 
-        if (trimmed.startsWith("public static void main")) {
+        if (trimmed.matches("public\\s+static\\s+void\\s+main\\s*\\(\\s*String\\s*\\[\\s*\\]\\s+"
+                + IDENTIFIER + "\\s*\\)\\s*\\{")) {
+            clearLocalVariables();
+            returnType = "int";
             return "int main() {";
         }
 
-        if (trimmed.startsWith("public static ")) {
-            return "";
+        Matcher method = METHOD.matcher(trimmed);
+        if (method.matches()) {
+            return translateMethod(method);
+        }
+        if (trimmed.matches("public\\s+static\\b.*")) {
+            throw new IllegalArgumentException("Unsupported method declaration: " + trimmed
+                    + ". Use a single-line signature with simple parameters and an opening brace.");
+        }
+        if (trimmed.matches("return\\s*;")) {
+            return "    return;";
+        }
+        if (trimmed.startsWith("return ") && trimmed.endsWith(";")) {
+            String expression = trimmed.substring(7, trimmed.length() - 1).trim();
+            if ("String".equals(returnType)
+                    && splitAddition(unwrapParentheses(expression)).size() > 1) {
+                usesStringReturnStream = true;
+                // Use the same concatenation rules as print, but collect the text
+                // in memory instead of displaying it on the console.
+                String temporary = "translatedReturnText";
+                while (expression.contains(temporary)) temporary += "_";
+                return String.join(System.lineSeparator(),
+                        "    {", "        std::ostringstream " + temporary + ";",
+                        "        " + temporary + " << std::boolalpha << " + convertPrintExpression(expression) + ";",
+                        "        return " + temporary + ".str();", "    }");
+            }
+            return "    return " + expression + ";";
         }
 
         if (trimmed.equals("}")) {
@@ -104,6 +139,45 @@ public class Translator {
         }
 
         return "    " + trimmed;
+    }
+
+    private static String cppType(String type) {
+        if (type.equals("String")) return "std::string";
+        if (type.equals("boolean")) return "bool";
+        return type;
+    }
+
+    private void clearLocalVariables() {
+        stringVariables.clear();
+        scannerVariables.clear();
+        stringArrays.clear();
+        arrayVariables.clear();
+    }
+
+    private String translateMethod(Matcher method) {
+        String name = method.group(2);
+        if (!methodNames.add(name)) {
+            throw new IllegalArgumentException("Method overloading is not supported: " + name);
+        }
+        clearLocalVariables();
+        returnType = method.group(1);
+        List<String> parameters = new ArrayList<>();
+        if (!method.group(3).trim().isEmpty()) {
+            for (String text : method.group(3).split(",", -1)) {
+                Matcher parameter = PARAMETER.matcher(text.trim());
+                if (!parameter.matches()) {
+                    throw new IllegalArgumentException("Unsupported parameter: " + text.trim());
+                }
+                String type = parameter.group(1);
+                String variable = parameter.group(2);
+                if (type.equals("String")) stringVariables.add(variable);
+                parameters.add(cppType(type) + " " + variable);
+            }
+        }
+        String signature = cppType(returnType) + " " + name + "(" + String.join(", ", parameters) + ")";
+        // C++ needs a declaration before a call, even if the definition is later.
+        methodDeclarations.add(signature + ";");
+        return signature + " {";
     }
 
     private String convertArrayLengths(String line) {
@@ -339,6 +413,10 @@ public class Translator {
         arrayVariables.clear();
         inBlockComment = false;
         usesArrays = false;
+        returnType = null;
+        usesStringReturnStream = false;
+        methodDeclarations.clear();
+        methodNames.clear();
         String sanitized = javaCode
                 .replaceFirst("(?s)public\\s+class\\s+\\w+\\s*\\{\\s*", "")
                 .replaceFirst("(?s)\\s*\\}\s*$", "");
@@ -368,7 +446,12 @@ public class Translator {
         if (usesArrays) {
             headers.add("#include <vector>");
         }
+        if (usesStringReturnStream) {
+            headers.add("#include <sstream>");
+        }
         headers.add("");
+        headers.addAll(methodDeclarations);
+        if (!methodDeclarations.isEmpty()) headers.add("");
         headers.add(body);
         return String.join(System.lineSeparator(), headers);
     }

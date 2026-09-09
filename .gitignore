@@ -1,0 +1,9 @@
+# Java and C++ build outputs
+*.class
+*.exe
+*.o
+*.obj
+/build/
+/out/
+
+# Keep Example.cpp tracked as the generated demonstration.
