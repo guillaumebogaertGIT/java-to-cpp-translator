@@ -6,5 +6,6 @@
 /build/
 /out/
 /target/
+/dist/
 
 # Keep Example.cpp tracked as the generated demonstration.
