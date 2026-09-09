@@ -38,6 +38,7 @@ public class TranslatorTest {
         check(translator, "System.out.println(label + total);",
                 "std::cout << (label + total) << std::endl;");
         testScanner();
+        testArrays();
         System.out.println("Passed " + checks + " translation checks.");
     }
 
@@ -99,5 +100,59 @@ public class TranslatorTest {
                 "        std::getline(std::cin, " + name + "InputLine);",
                 "        " + name + " = std::" + conversion + "(" + name + "InputLine);",
                 "    }");
+    }
+
+    private static void testArrays() {
+        Translator translator = new Translator();
+        check(translator, "int[] numbers = new int[5];", "std::vector<int> numbers(5);");
+        check(translator, "double[] values = new double[10];", "std::vector<double> values(10);");
+        check(translator, "String[] names = new String[3];", "std::vector<std::string> names(3);");
+        check(translator, "int[] numbers = {1, 2, 3, 4};", "std::vector<int> numbers = {1, 2, 3, 4};");
+        check(translator, "numbers[0] = 10;", "numbers[0] = 10;");
+        check(translator, "System.out.println(numbers[0]);", "std::cout << (numbers[0]) << std::endl;");
+        check(translator, "values[1] = 2.5;", "values[1] = 2.5;");
+        check(translator, "names[0] = \"Ada\";", "names[0] = \"Ada\";");
+        check(translator, "System.out.print(names[0]);", "std::cout << (names[0]);");
+        check(translator, "System.out.println(names[0] + numbers[0]);",
+                "std::cout << (names[0]) << (numbers[0]) << std::endl;");
+        check(translator, "System.out.println(numbers[0] + numbers[1]);",
+                "std::cout << (numbers[0] + numbers[1]) << std::endl;");
+        check(translator, "System.out.println(\"Next: \" + numbers[i + 1]);",
+                "std::cout << \"Next: \" << (numbers[i + 1]) << std::endl;");
+        check(translator, "int [] empty = new int [ 0 ];", "std::vector<int> empty(0);");
+        check(translator, "int[] sized = new int[count];", "std::vector<int> sized(count);");
+        check(translator, "int[] empty = {};", "std::vector<int> empty = {};");
+
+        String code = translator.translate(String.join("\n",
+                "import java.util.Scanner;",
+                "public class ArrayExample {",
+                "public static void main(String[] args) {",
+                "Scanner scanner = new Scanner(System.in);",
+                "int count = Integer.valueOf(scanner.nextLine());",
+                "int[] numbers = new int[count];",
+                "double[] values = new double[10];",
+                "String[] names = new String[3];",
+                "String name = scanner.nextLine();",
+                "names[0] = name;",
+                "numbers[0] = 10;",
+                "System.out.println(names[0] + numbers[0]);",
+                "}", "}"));
+        require(code.contains("#include <vector>"), "Arrays need the vector header");
+        require(code.indexOf("#include <vector>") == code.lastIndexOf("#include <vector>"),
+                "Multiple arrays only need one vector header");
+        require(code.contains("#include <string>") && code.contains("#include <iostream>"),
+                "Scanner and string array headers must be preserved");
+        require(code.contains("std::getline(std::cin, countInputLine);")
+                && code.contains("std::getline(std::cin, name);"), "Scanner input still works alongside arrays");
+        require(code.contains("std::cout << (names[0]) << (numbers[0]) << std::endl;"),
+                "String array elements still concatenate in print statements");
+        String numericOnly = translator.translate("int[] numbers = new int[5];");
+        require(numericOnly.contains("#include <vector>") && !numericOnly.contains("#include <string>"),
+                "Numeric arrays do not need string");
+        String noArrays = translator.translate("System.out.println(5);");
+        require(!noArrays.contains("#include <vector>"), "Array header state resets between programs");
+        check(translator, "System.out.println(names[0] + 1);", "std::cout << (names[0] + 1) << std::endl;");
+        require(!translator.translate("System.out.println(\"std::vector<int>\");").contains("#include <vector>"),
+                "Mentioning vector in a string does not use arrays");
     }
 }

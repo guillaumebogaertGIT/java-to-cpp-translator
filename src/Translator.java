@@ -12,7 +12,14 @@ import java.util.regex.Pattern;
 public class Translator {
     private final Set<String> stringVariables = new HashSet<>();
     private final Set<String> scannerVariables = new HashSet<>();
+    private final Set<String> stringArrays = new HashSet<>();
+    private boolean usesArrays;
     private static final String IDENTIFIER = "[A-Za-z_][A-Za-z0-9_]*";
+    private static final Pattern ARRAY_ALLOCATION = Pattern.compile(
+            "(int|double|String)\\s*\\[\\s*\\]\\s+(" + IDENTIFIER
+                    + ")\\s*=\\s*new\\s+\\1\\s*\\[\\s*([0-9]+|" + IDENTIFIER + ")\\s*\\]\\s*;");
+    private static final Pattern INT_ARRAY_INITIALIZER = Pattern.compile(
+            "int\\s*\\[\\s*\\]\\s+(" + IDENTIFIER + ")\\s*=\\s*\\{([^{}]*)\\}\\s*;");
     private static final Pattern SCANNER_DECLARATION = Pattern.compile(
             "Scanner\\s+(" + IDENTIFIER + ")\\s*=\\s*new\\s+Scanner\\s*\\(\\s*System\\.in\\s*\\)\\s*;");
     private static final Pattern STRING_INPUT = Pattern.compile(
@@ -36,6 +43,10 @@ public class Translator {
         String scannerTranslation = translateScannerLine(trimmed);
         if (scannerTranslation != null) {
             return scannerTranslation;
+        }
+        String arrayTranslation = translateArrayLine(trimmed);
+        if (arrayTranslation != null) {
+            return arrayTranslation;
         }
 
         if (trimmed.startsWith("public class ")) {
@@ -86,6 +97,29 @@ public class Translator {
         }
 
         return "    " + trimmed;
+    }
+
+    // Vector construction supplies zeroes for numeric elements. String elements
+    // start as empty strings (Java String arrays instead start with null).
+    private String translateArrayLine(String line) {
+        Matcher allocation = ARRAY_ALLOCATION.matcher(line);
+        if (allocation.matches()) {
+            String type = allocation.group(1);
+            String name = allocation.group(2);
+            usesArrays = true;
+            if (type.equals("String")) stringArrays.add(name);
+            else stringArrays.remove(name);
+            String cppType = type.equals("String") ? "std::string" : type;
+            return "    std::vector<" + cppType + "> " + name + "(" + allocation.group(3) + ");";
+        }
+        Matcher initializer = INT_ARRAY_INITIALIZER.matcher(line);
+        if (initializer.matches()) {
+            usesArrays = true;
+            stringArrays.remove(initializer.group(1));
+            return "    std::vector<int> " + initializer.group(1) + " = {" + initializer.group(2) + "};";
+        }
+        // Element access and assignment already share C++ syntax: numbers[i] = 10;
+        return null;
     }
 
     // A null result means this is not one of our supported Scanner statements.
@@ -189,7 +223,9 @@ public class Translator {
             }
             return false;
         }
-        return value.startsWith("\"") || stringVariables.contains(value);
+        Matcher element = Pattern.compile("(" + IDENTIFIER + ")\\s*\\[[^\\[\\]]+\\]").matcher(value);
+        return value.startsWith("\"") || stringVariables.contains(value)
+                || (element.matches() && stringArrays.contains(element.group(1)));
     }
 
     private static String streamOperand(String value) {
@@ -259,6 +295,8 @@ public class Translator {
     public String translate(String javaCode) {
         stringVariables.clear();
         scannerVariables.clear();
+        stringArrays.clear();
+        usesArrays = false;
         String sanitized = javaCode
                 .replaceFirst("(?s)public\\s+class\\s+\\w+\\s*\\{\\s*", "")
                 .replaceFirst("(?s)\\s*\\}\s*$", "");
@@ -284,6 +322,9 @@ public class Translator {
         }
         if (body.contains("std::string") || body.contains("std::stoi") || body.contains("std::stod")) {
             headers.add("#include <string>");
+        }
+        if (usesArrays) {
+            headers.add("#include <vector>");
         }
         headers.add("");
         headers.add(body);
