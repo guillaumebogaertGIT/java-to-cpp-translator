@@ -88,7 +88,7 @@ public class TranslatorApp extends Application {
         status.setMaxWidth(Double.MAX_VALUE);
         BorderPane root = new BorderPane(editors, header, null, status, null);
         Scene scene = new Scene(root, 1100, 720);
-        scene.getStylesheets().add(TranslatorApp.class.getResource("/translator.css").toExternalForm());
+        scene.getStylesheets().add(TranslatorApp.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
         stage.setMinWidth(760);
         stage.setMinHeight(480);

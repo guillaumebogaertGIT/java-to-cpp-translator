@@ -1,0 +1,202 @@
+/* Dark developer-tool palette. Native file dialogs follow the Windows theme. */
+.root {
+    -fx-base: #202734;
+    -fx-background: #111720;
+    -fx-control-inner-background: #151c27;
+    -fx-accent: #75a7ff;
+    -fx-focus-color: #75a7ff;
+    -fx-faint-focus-color: transparent;
+    -fx-background-color: #111720;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 13px;
+    -fx-padding: 24;
+}
+
+.label {
+    -fx-text-fill: #dce4f0;
+}
+
+.app-title {
+    -fx-font-size: 25px;
+    -fx-font-weight: bold;
+}
+
+.subtitle {
+    -fx-text-fill: #9aaac0;
+}
+
+.app-header {
+    -fx-padding: 0 0 20 0;
+    -fx-spacing: 9;
+}
+
+.toolbar {
+    -fx-padding: 10 0 0 0;
+    -fx-alignment: center-left;
+}
+
+.button {
+    -fx-background-color: #232d3c;
+    -fx-text-fill: #dce4f0;
+    -fx-border-color: #39465a;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 9 16;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #303e52;
+}
+
+.button:pressed {
+    -fx-background-color: #1b2432;
+}
+
+.button:focused {
+    -fx-border-color: #9fc2ff;
+}
+
+.button:disabled {
+    -fx-opacity: 0.45;
+}
+
+.primary-button {
+    -fx-background-color: #346edb;
+    -fx-border-color: #588cf0;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.primary-button:hover {
+    -fx-background-color: #427fee;
+}
+
+.primary-button:pressed {
+    -fx-background-color: #295ab6;
+}
+
+.split-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.split-pane-divider {
+    -fx-background-color: #111720;
+    -fx-padding: 0 6;
+}
+
+.split-pane-divider:hover {
+    -fx-background-color: #2a3b53;
+}
+
+.code-panel {
+    -fx-background-color: #151c27;
+    -fx-background-radius: 8;
+    -fx-border-color: #303c4f;
+    -fx-border-radius: 8;
+    -fx-padding: 1;
+}
+
+.panel-header {
+    -fx-alignment: center-left;
+    -fx-padding: 12 14;
+    -fx-border-color: transparent transparent #303c4f transparent;
+}
+
+.panel-title {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #becbde;
+}
+
+.language-icon {
+    -fx-min-width: 30;
+    -fx-max-width: 30;
+    -fx-min-height: 30;
+    -fx-max-height: 30;
+}
+
+.java-cup {
+    -fx-fill: transparent;
+    -fx-stroke: #e8a16c;
+    -fx-stroke-width: 1.4;
+}
+
+.cpp-icon {
+    -fx-background-color: #243f5c;
+    -fx-background-radius: 6;
+}
+
+.cpp-symbol {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #9fcbff;
+}
+
+.code-editor {
+    -fx-font-family: "Consolas";
+    -fx-font-size: 14px;
+    -fx-text-fill: #e0e8f4;
+    -fx-prompt-text-fill: #8999b0;
+    -fx-highlight-fill: #345889;
+    -fx-highlight-text-fill: white;
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.code-editor .content {
+    -fx-background-color: #151c27;
+    -fx-padding: 14;
+}
+
+.code-editor:focused {
+    -fx-background-color: #75a7ff;
+    -fx-background-insets: 0;
+    -fx-padding: 1;
+}
+
+.code-editor .scroll-pane,
+.code-editor .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar {
+    -fx-background-color: #151c27;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #3b4b62;
+    -fx-background-radius: 5;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #526680;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: #151c27;
+}
+
+.scroll-pane .corner {
+    -fx-background-color: #151c27;
+}
+
+.status-message {
+    -fx-text-fill: #9eafc7;
+    -fx-padding: 16 2 0 2;
+}
+
+.status-message:error {
+    -fx-text-fill: #ff9292;
+}
+
+.context-menu {
+    -fx-background-color: #232d3c;
+}
+
+.menu-item:focused {
+    -fx-background-color: #345889;
+}
