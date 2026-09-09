@@ -6,9 +6,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Translator {
     private final Set<String> stringVariables = new HashSet<>();
+    private final Set<String> scannerVariables = new HashSet<>();
+    private static final String IDENTIFIER = "[A-Za-z_][A-Za-z0-9_]*";
+    private static final Pattern SCANNER_DECLARATION = Pattern.compile(
+            "Scanner\\s+(" + IDENTIFIER + ")\\s*=\\s*new\\s+Scanner\\s*\\(\\s*System\\.in\\s*\\)\\s*;");
+    private static final Pattern STRING_INPUT = Pattern.compile(
+            "String\\s+(" + IDENTIFIER + ")\\s*=\\s*(" + IDENTIFIER + ")\\.nextLine\\s*\\(\\s*\\)\\s*;");
+    private static final Pattern NUMBER_INPUT = Pattern.compile(
+            "(int|double)\\s+(" + IDENTIFIER + ")\\s*=\\s*(Integer|Double)\\.valueOf\\s*\\(\\s*("
+                    + IDENTIFIER + ")\\.nextLine\\s*\\(\\s*\\)\\s*\\)\\s*;");
     public String translateLine(String line) {
         if (line == null) {
             return "";
@@ -17,6 +28,14 @@ public class Translator {
         String trimmed = line.trim();
         if (trimmed.isEmpty()) {
             return "";
+        }
+
+        if (trimmed.matches("import\\s+java\\.util\\.Scanner\\s*;")) {
+            return "";
+        }
+        String scannerTranslation = translateScannerLine(trimmed);
+        if (scannerTranslation != null) {
+            return scannerTranslation;
         }
 
         if (trimmed.startsWith("public class ")) {
@@ -67,6 +86,48 @@ public class Translator {
         }
 
         return "    " + trimmed;
+    }
+
+    // A null result means this is not one of our supported Scanner statements.
+    private String translateScannerLine(String line) {
+        Matcher declaration = SCANNER_DECLARATION.matcher(line);
+        if (declaration.matches()) {
+            scannerVariables.add(declaration.group(1));
+            return ""; // C++ reads directly from std::cin; no Scanner object is needed.
+        }
+
+        Matcher text = STRING_INPUT.matcher(line);
+        if (text.matches() && scannerVariables.contains(text.group(2))) {
+            String name = text.group(1);
+            stringVariables.add(name);
+            return "    std::string " + name + ";" + System.lineSeparator()
+                    + "    std::getline(std::cin, " + name + ");";
+        }
+
+        Matcher number = NUMBER_INPUT.matcher(line);
+        if (number.matches() && scannerVariables.contains(number.group(4))) {
+            String type = number.group(1);
+            String wrapper = number.group(3);
+            if (!(type.equals("int") && wrapper.equals("Integer"))
+                    && !(type.equals("double") && wrapper.equals("Double"))) {
+                return null;
+            }
+            String name = number.group(2);
+            stringVariables.remove(name);
+            String inputLine = name + "InputLine";
+            String conversion = type.equals("int") ? "std::stoi" : "std::stod";
+            // Read the whole line before converting, so the next text read does not
+            // accidentally consume a newline left over by numeric stream extraction.
+            // The block keeps the temporary string local to this one input operation.
+            return String.join(System.lineSeparator(),
+                    "    " + type + " " + name + ";",
+                    "    {",
+                    "        std::string " + inputLine + ";",
+                    "        std::getline(std::cin, " + inputLine + ");",
+                    "        " + name + " = " + conversion + "(" + inputLine + ");",
+                    "    }");
+        }
+        return null;
     }
 
     private String convertDeclaration(String declaration) {
@@ -197,14 +258,12 @@ public class Translator {
 
     public String translate(String javaCode) {
         stringVariables.clear();
+        scannerVariables.clear();
         String sanitized = javaCode
                 .replaceFirst("(?s)public\\s+class\\s+\\w+\\s*\\{\\s*", "")
                 .replaceFirst("(?s)\\s*\\}\s*$", "");
 
         List<String> translatedLines = new ArrayList<>();
-        translatedLines.add("#include <iostream>");
-        translatedLines.add("#include <string>");
-        translatedLines.add("");
 
         for (String rawLine : sanitized.split("\\r?\\n")) {
             String line = rawLine.trim();
@@ -218,7 +277,17 @@ public class Translator {
             }
         }
 
-        return String.join(System.lineSeparator(), translatedLines);
+        String body = String.join(System.lineSeparator(), translatedLines);
+        List<String> headers = new ArrayList<>();
+        if (body.contains("std::cin") || body.contains("std::cout")) {
+            headers.add("#include <iostream>");
+        }
+        if (body.contains("std::string") || body.contains("std::stoi") || body.contains("std::stod")) {
+            headers.add("#include <string>");
+        }
+        headers.add("");
+        headers.add(body);
+        return String.join(System.lineSeparator(), headers);
     }
 
     public void translateFile(String inputPath, String outputPath) throws IOException {
