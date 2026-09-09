@@ -25,7 +25,9 @@ import java.util.Locale;
 public class TranslatorApp extends Application {
     private final TextArea javaEditor = new TextArea();
     private final TextArea cppOutput = new TextArea();
-    private final Label status = new Label("Ready. Paste Java code or open a .java file.");
+    private final Label statusIndicator = new Label("●");
+    private final Label statusText = new Label("Ready");
+    private final Label versionText = new Label("v1.0 • Guillaume Bogaert");
     private String outputFileName = "Translated.cpp";
 
     @Override
@@ -82,11 +84,21 @@ public class TranslatorApp extends Application {
         SplitPane editors = new SplitPane(codePanel("JAVA INPUT", javaEditor, true), codePanel("C++ OUTPUT", cppOutput, false));
         editors.setDividerPositions(0.5);
 
-        status.setId("statusMessage");
-        status.setWrapText(true);
-        status.getStyleClass().add("status-message");
-        status.setMaxWidth(Double.MAX_VALUE);
-        BorderPane root = new BorderPane(editors, header, null, status, null);
+        statusIndicator.setId("statusIndicator");
+        statusIndicator.getStyleClass().add("status-indicator");
+        statusText.setId("statusMessage");
+        statusText.setWrapText(true);
+        statusText.getStyleClass().add("status-message");
+        statusText.setMaxWidth(Double.MAX_VALUE);
+        versionText.getStyleClass().add("status-version");
+
+        HBox statusLeft = new HBox(8, statusIndicator, statusText);
+        statusLeft.getStyleClass().add("status-left");
+        HBox statusBar = new HBox(statusLeft, versionText);
+        statusBar.getStyleClass().add("status-bar");
+        HBox.setHgrow(statusLeft, Priority.ALWAYS);
+
+        BorderPane root = new BorderPane(editors, header, null, statusBar, null);
         Scene scene = new Scene(root, 1100, 720);
         scene.getStylesheets().add(TranslatorApp.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
@@ -180,8 +192,10 @@ public class TranslatorApp extends Application {
     }
 
     private void showStatus(String message, boolean error) {
-        status.setText(message);
-        status.pseudoClassStateChanged(PseudoClass.getPseudoClass("error"), error);
+        statusText.setText(message);
+        statusIndicator.getStyleClass().removeAll("ready", "error");
+        statusIndicator.getStyleClass().add(error ? "error" : "ready");
+        statusText.pseudoClassStateChanged(PseudoClass.getPseudoClass("error"), error);
     }
 
     public static void main(String[] args) {

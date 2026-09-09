@@ -102,6 +102,7 @@
     -fx-alignment: center-left;
     -fx-padding: 12 14;
     -fx-border-color: transparent transparent #303c4f transparent;
+    -fx-spacing: 10;
 }
 
 .panel-title {
@@ -111,10 +112,12 @@
 }
 
 .language-icon {
-    -fx-min-width: 30;
-    -fx-max-width: 30;
-    -fx-min-height: 30;
-    -fx-max-height: 30;
+    -fx-min-width: 26;
+    -fx-max-width: 26;
+    -fx-min-height: 26;
+    -fx-max-height: 26;
+    -fx-alignment: center;
+    -fx-padding: 0;
 }
 
 .java-cup {
@@ -184,13 +187,49 @@
     -fx-background-color: #151c27;
 }
 
+.status-bar {
+    -fx-background-color: #141b24;
+    -fx-border-color: #2b3747 transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 6 12;
+    -fx-alignment: center-left;
+    -fx-spacing: 8;
+    -fx-font-size: 11px;
+}
+
+.status-left {
+    -fx-alignment: center-left;
+    -fx-spacing: 8;
+    -fx-padding: 0;
+}
+
+.status-indicator {
+    -fx-text-fill: #7ecf8f;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.status-indicator.ready {
+    -fx-text-fill: #7ecf8f;
+}
+
+.status-indicator.error {
+    -fx-text-fill: #ff8e8e;
+}
+
 .status-message {
-    -fx-text-fill: #9eafc7;
-    -fx-padding: 16 2 0 2;
+    -fx-text-fill: #bfc9d8;
+    -fx-padding: 0;
 }
 
 .status-message:error {
-    -fx-text-fill: #ff9292;
+    -fx-text-fill: #ff9a9a;
+}
+
+.status-version {
+    -fx-text-fill: #8594ad;
+    -fx-font-size: 10px;
+    -fx-padding: 0 0 0 12;
 }
 
 .context-menu {
