@@ -8,11 +8,30 @@ try {
     & java -cp build/installer-tests TranslatorTest
     if ($LASTEXITCODE -ne 0) { throw 'Translation checks failed. Packaging stopped.' }
 
+    $wixBinCandidates = @(
+        (Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin'),
+        (Join-Path $env:ProgramFiles 'WiX Toolset v3.14\bin'),
+        (Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14.1\bin'),
+        (Join-Path $env:ProgramFiles 'WiX Toolset v3.14.1\bin')
+    )
+    foreach ($candidate in $wixBinCandidates) {
+        if ($candidate -and (Test-Path -LiteralPath $candidate)) {
+            $env:Path = "$candidate;$env:Path"
+            break
+        }
+    }
+
     foreach ($tool in @('jpackage', 'candle', 'light')) {
         if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
             throw "Missing $tool. Use JDK 21 and install WiX Toolset 3.14.1 build tools; add its bin directory to PATH. See INSTALLER.md."
         }
     }
+
+    $iconPath = Join-Path $PSScriptRoot 'packaging/app-icon.ico'
+    if (-not (Test-Path -LiteralPath $iconPath)) {
+        throw "Missing Windows icon: $iconPath. Generate packaging/app-icon.ico before packaging."
+    }
+
     $appImage = Join-Path $PSScriptRoot 'dist/Java to C++ Translator'
     foreach ($required in @('Java to C++ Translator.exe', 'app/.jpackage.xml', 'runtime/lib/modules')) {
         if (-not (Test-Path -LiteralPath (Join-Path $appImage $required))) {
@@ -21,11 +40,13 @@ try {
     }
     # Reuse the working launcher, JavaFX libraries, and bundled runtime unchanged.
     # Windows Installer supplies Installed Apps registration and uninstallation.
+    # Bump the app version to force a fresh launcher + shortcut icon when re-installing.
     $packageArguments = @(
         '--type', 'exe',
         '--app-image', $appImage,
         '--name', 'Java to C++ Translator',
-        '--app-version', '1.0.0',
+        '--app-version', '1.0.1',
+        '--icon', $iconPath,
         '--dest', (Join-Path $PSScriptRoot 'dist/installer'),
         '--win-menu', '--win-menu-group', 'Java to C++ Translator',
         '--win-shortcut', '--win-dir-chooser',
@@ -33,7 +54,7 @@ try {
     )
     & jpackage @packageArguments
     if ($LASTEXITCODE -ne 0) { throw 'jpackage installer creation failed.' }
-    $installer = Join-Path $PSScriptRoot 'dist/installer/Java to C++ Translator-1.0.0.exe'
+    $installer = Join-Path $PSScriptRoot 'dist/installer/Java to C++ Translator-1.0.1.exe'
     if (-not (Test-Path -LiteralPath $installer)) { throw 'Expected installer was not produced.' }
     Write-Host "Installer created: $installer"
 } finally {
