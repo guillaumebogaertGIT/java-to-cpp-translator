@@ -13,11 +13,17 @@ public class Translator {
     private final Set<String> stringVariables = new HashSet<>();
     private final Set<String> scannerVariables = new HashSet<>();
     private final Set<String> stringArrays = new HashSet<>();
+    private final Set<String> arrayVariables = new HashSet<>();
+    private boolean inBlockComment;
     private boolean usesArrays;
     private static final String IDENTIFIER = "[A-Za-z_][A-Za-z0-9_]*";
+    // Match literals/comments first so their contents are never rewritten.
+    private static final Pattern ARRAY_LENGTH = Pattern.compile(
+            "\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'|//.*|/\\*.*?(?:\\*/|$)"
+                    + "|(?<![\\w$.])(" + IDENTIFIER + ")\\s*\\.\\s*length\\b(?!\\s*\\()");
     private static final Pattern ARRAY_ALLOCATION = Pattern.compile(
             "(int|double|String)\\s*\\[\\s*\\]\\s+(" + IDENTIFIER
-                    + ")\\s*=\\s*new\\s+\\1\\s*\\[\\s*([0-9]+|" + IDENTIFIER + ")\\s*\\]\\s*;");
+                    + ")\\s*=\\s*new\\s+\\1\\s*\\[\\s*([^\\[\\];{}]+)\\s*\\]\\s*;");
     private static final Pattern INT_ARRAY_INITIALIZER = Pattern.compile(
             "int\\s*\\[\\s*\\]\\s+(" + IDENTIFIER + ")\\s*=\\s*\\{([^{}]*)\\}\\s*;");
     private static final Pattern SCANNER_DECLARATION = Pattern.compile(
@@ -36,6 +42,7 @@ public class Translator {
         if (trimmed.isEmpty()) {
             return "";
         }
+        trimmed = convertArrayLengths(trimmed);
 
         if (trimmed.matches("import\\s+java\\.util\\.Scanner\\s*;")) {
             return "";
@@ -99,6 +106,37 @@ public class Translator {
         return "    " + trimmed;
     }
 
+    private String convertArrayLengths(String line) {
+        int start = 0;
+        if (inBlockComment) {
+            int end = line.indexOf("*/");
+            if (end < 0) return line;
+            start = end + 2;
+            inBlockComment = false;
+        }
+        StringBuilder result = new StringBuilder(line.substring(0, start));
+        Matcher matcher = ARRAY_LENGTH.matcher(line);
+        matcher.region(start, line.length());
+        int copied = start;
+        while (matcher.find()) {
+            result.append(line, copied, matcher.start());
+            String name = matcher.group(1);
+            int previous = matcher.start() - 1;
+            while (previous >= 0 && Character.isWhitespace(line.charAt(previous))) previous--;
+            boolean memberAccess = previous >= 0 && line.charAt(previous) == '.';
+            if (name != null && arrayVariables.contains(name) && !memberAccess) {
+                result.append(name).append(".size()");
+            } else {
+                result.append(matcher.group());
+            }
+            if (matcher.group().startsWith("/*") && !matcher.group().endsWith("*/")) {
+                inBlockComment = true;
+            }
+            copied = matcher.end();
+        }
+        return result.append(line.substring(copied)).toString();
+    }
+
     // Vector construction supplies zeroes for numeric elements. String elements
     // start as empty strings (Java String arrays instead start with null).
     private String translateArrayLine(String line) {
@@ -106,14 +144,16 @@ public class Translator {
         if (allocation.matches()) {
             String type = allocation.group(1);
             String name = allocation.group(2);
+            arrayVariables.add(name);
             usesArrays = true;
             if (type.equals("String")) stringArrays.add(name);
             else stringArrays.remove(name);
             String cppType = type.equals("String") ? "std::string" : type;
-            return "    std::vector<" + cppType + "> " + name + "(" + allocation.group(3) + ");";
+            return "    std::vector<" + cppType + "> " + name + "(" + allocation.group(3).trim() + ");";
         }
         Matcher initializer = INT_ARRAY_INITIALIZER.matcher(line);
         if (initializer.matches()) {
+            arrayVariables.add(initializer.group(1));
             usesArrays = true;
             stringArrays.remove(initializer.group(1));
             return "    std::vector<int> " + initializer.group(1) + " = {" + initializer.group(2) + "};";
@@ -296,6 +336,8 @@ public class Translator {
         stringVariables.clear();
         scannerVariables.clear();
         stringArrays.clear();
+        arrayVariables.clear();
+        inBlockComment = false;
         usesArrays = false;
         String sanitized = javaCode
                 .replaceFirst("(?s)public\\s+class\\s+\\w+\\s*\\{\\s*", "")

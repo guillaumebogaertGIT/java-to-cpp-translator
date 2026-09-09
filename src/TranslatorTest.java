@@ -39,6 +39,7 @@ public class TranslatorTest {
                 "std::cout << (label + total) << std::endl;");
         testScanner();
         testArrays();
+        testArrayLengths();
         System.out.println("Passed " + checks + " translation checks.");
     }
 
@@ -100,6 +101,49 @@ public class TranslatorTest {
                 "        std::getline(std::cin, " + name + "InputLine);",
                 "        " + name + " = std::" + conversion + "(" + name + "InputLine);",
                 "    }");
+    }
+
+    private static void testArrayLengths() {
+        Translator translator = new Translator();
+        translator.translateLine("int[] numbers = {1, 2, 3};");
+        translator.translateLine("double[] values = new double[10];");
+        translator.translateLine("String[] names = new String[3];");
+        check(translator, "System.out.println(numbers.length);", "std::cout << (numbers.size()) << std::endl;");
+        check(translator, "System.out.print(\"Count: \" + names.length);",
+                "std::cout << \"Count: \" << (names.size());");
+        check(translator, "int count = numbers.length;", "int count = numbers.size();");
+        check(translator, "count = numbers.length + values.length;", "count = numbers.size() + values.size();");
+        check(translator, "numbers[0] = names.length;", "numbers[0] = names.size();");
+        check(translator, "numbers[numbers.length - 1] = 10;", "numbers[numbers.size() - 1] = 10;");
+        check(translator, "for (int i = 0; i < numbers.length; i++)",
+                "for (int i = 0; i < numbers.size(); i++) {");
+        check(translator, "while (count < values.length) {", "while (count < values.size()) {");
+        check(translator, "if (names.length > 0) {", "if (names.size() > 0) {");
+        check(translator, "count = (numbers . length * 2);", "count = (numbers.size() * 2);");
+        check(translator, "int[] copy = new int[numbers.length];", "std::vector<int> copy(numbers.size());");
+        check(translator, "int[] sizes = {numbers.length, names.length};",
+                "std::vector<int> sizes = {numbers.size(), names.size()};");
+        check(translator, "System.out.println(\"numbers.length\" + numbers.length);",
+                "std::cout << \"numbers.length\" << (numbers.size()) << std::endl;");
+        check(translator, "String label = \"\\\"numbers.length\\\"\";", "std::string label = \"\\\"numbers.length\\\"\";");
+        check(translator, "count = numbers.length; // numbers.length", "count = numbers.size(); // numbers.length");
+        check(translator, "/* numbers.length */ count = numbers.length;", "/* numbers.length */ count = numbers.size();");
+        check(translator, "/* numbers.length", "/* numbers.length");
+        check(translator, "numbers.length */ count = numbers.length;", "numbers.length */ count = numbers.size();");
+        check(translator, "count = unknown.length;", "count = unknown.length;");
+        check(translator, "count = label.length();", "count = label.length();");
+        check(translator, "count = numbers.lengthExtra;", "count = numbers.lengthExtra;");
+        check(translator, "count = object. numbers.length;", "count = object. numbers.length;");
+        String code = translator.translate(String.join("\n",
+                "public class LengthExample {", "public static void main(String[] args) {",
+                "int[] numbers = {1, 2, 3};", "int count = numbers.length;",
+                "for (int i = 0; i < numbers.length; i++) {",
+                "System.out.println(numbers[i]);", "}", "}", "}"));
+        require(code.contains("#include <vector>") && code.contains("i < numbers.size()")
+                && code.contains("int count = numbers.size();") && !code.contains(".length"),
+                "Full program rewrites lengths and keeps array headers");
+        translator.translate("int count = 0;");
+        check(translator, "count = numbers.length;", "count = numbers.length;");
     }
 
     private static void testArrays() {
