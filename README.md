@@ -4,18 +4,46 @@ A small student project written in Java that translates a limited Java subset in
 
 ## Requirements
 
-- JDK 17 or newer, with `java` and `javac` on your PATH. Development tests used JDK 21.
+- JDK 21, with `java` and `javac` on your PATH and `JAVA_HOME` pointing to the JDK directory.
 - Optional: a C++11-or-newer compiler, such as `g++`, to compile generated output.
-- No external Java libraries, Maven, or Gradle are required.
+- JavaFX dependencies are managed by Maven. The included Maven wrapper downloads Maven automatically; no separate Maven or JavaFX SDK installation is required. The first Maven run needs internet access.
 
 Run all commands below from the project root. Java commands work in PowerShell and typical Unix shells.
 
 ## Compile and run
 
+### JavaFX desktop app (Windows / VS Code)
+
+Open this project folder in VS Code. In the integrated PowerShell terminal, run:
+
+```powershell
+.\mvnw.cmd javafx:run
+```
+
+A window titled **Java to C++ Translator** provides two large code areas. Paste Java on the left or use **Open Java File**, then click **Translate** to see C++ on the right. Drag the divider or resize the window to adjust the editors.
+
+Use **Save C++ File** to choose a `.cpp` destination. File input/output uses UTF-8. **Clear** empties both areas, and the bottom status message reports success or errors. Editing Java clears the old output and disables saving until you translate again. Opening another file or clearing replaces the current editor contents. The C++ area is read-only but supports selection and copying. Unsupported Java that the translator passes through may still fail C++ compilation; the GUI does not compile generated code.
+
+Run all existing translator checks through Maven:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Check the JDK Maven uses with `.\mvnw.cmd -version`; it should report Java 21. If needed, set `$env:JAVA_HOME` to your installed JDK 21 directory in the terminal before running the wrapper. VS Code's **Extension Pack for Java** can import the `pom.xml`; select JDK 21 with **Java: Configure Java Runtime** if the editor uses another JDK.
+
+On Linux/macOS use `sh mvnw javafx:run` or `sh mvnw test`. If Maven is already installed, `mvn javafx:run` and `mvn test` are equivalent.
+
+`pom.xml` keeps the existing `src/` layout, compiles with Java release 21, and uses JavaFX 21.0.8. Maven downloads the platform libraries automatically, following the [OpenJFX Maven setup](https://openjfx.io/openjfx-docs/maven). No FXML or module descriptor is needed for this minimal app. The existing plain Java test runner is attached to Maven's test phase through the exec plugin; look for `Passed 110 translation checks.` even if Surefire reports no JUnit tests.
+
+Maven outputs go in ignored `target/`. After Maven compilation, the command-line translator still runs with `java -cp target/classes Main`. `TranslatorApp` is the GUI entry point; `Main` remains the command-line entry point.
+
+### Command-line translator (without JavaFX)
+
 Compile the translator into a separate build directory:
 
 ```text
-javac -d build src/Main.java src/Translator.java
+javac -d build src/Main.java src/Translator.java src/CppFormatter.java
 ```
 
 Translate the included demo:
@@ -65,7 +93,7 @@ public class Example {
 }
 ```
 
-Generated C++ (including the translator's simple indentation):
+Generated C++ (four spaces per brace nesting level):
 
 ```cpp
 #include <iostream>
@@ -73,13 +101,13 @@ Generated C++ (including the translator's simple indentation):
 int main() {
     int total = 0;
     for (int i = 0; i < 5; i++) {
-    total = total + i;
-    std::cout << total << std::endl;
-}
+        total = total + i;
+        std::cout << total << std::endl;
+    }
     while (total < 10) {
-    total = total + 1;
-    std::cout << "still going" << std::endl;
-}
+        total = total + 1;
+        std::cout << "still going" << std::endl;
+    }
 }
 ```
 
@@ -138,18 +166,18 @@ Headers are selected from the translated code and used features: `<iostream>`, `
 - Numeric input conversion and end-of-input errors do not exactly match Java. For example, C++ conversion can accept a numeric prefix followed by text. Use valid input for demonstrations.
 - Numeric overflow, decimal formatting, and boolean printing can differ between languages. Ordinary C++ stream output prints booleans as `1`/`0`; concatenated String returns enable `true`/`false` formatting.
 - Java command-line arguments are discarded. An early bare `return;` in Java `main` is not converted to C++ `return 0;`.
-- Blank lines and original indentation are not preserved. Output is intentionally basic. Generated headers are partly detected through text matching, so a literal mentioning C++ names can cause an unnecessary header.
+- Original blank lines and indentation are not preserved. A separate formatting pass indents generated C++ with four spaces per brace nesting level, ignoring braces inside ordinary strings, character literals, and comments. It does not reflow statements or add syntax support. Generated headers are partly detected through text matching, so a literal mentioning C++ names can cause an unnecessary header.
 
 ## Tests
 
 Compile and run every automated translation check:
 
 ```text
-javac -d build src/Main.java src/Translator.java src/TranslatorTest.java
+javac -d build src/Main.java src/Translator.java src/CppFormatter.java src/TranslatorTest.java
 java -cp build TranslatorTest
 ```
 
-The current suite reports `Passed 103 translation checks.` It tests print concatenation, Scanner patterns, arrays, lengths, methods, headers, and state resets. A failed check throws an assertion error; no test framework is required.
+The current suite reports `Passed 110 translation checks.` It tests print concatenation, Scanner patterns, arrays, lengths, methods, headers, and state resets. A failed check throws an assertion error; no test framework is required.
 
 Compile and run the Java examples:
 
@@ -167,8 +195,11 @@ These checks validate translated text and Java examples, not automatic Java/C++ 
 | File | Responsibility |
 | --- | --- |
 | `src/Main.java` | Command-line entry point: chooses paths, invokes translation, and reports success/errors. |
+| `src/TranslatorApp.java` | Desktop layout, button handlers, Java/C++ text areas, file dialogs, and status/error messages. Calls `Translator.translate()` without changing translation rules. |
+| `pom.xml`, `mvnw.cmd`, `mvnw`, `.mvn/wrapper/` | Maven build, automatic JavaFX dependencies, and portable Maven launcher. |
 | `src/Translator.java` | Reads/writes files, processes source line by line, applies focused translation helpers, tracks a few variable types, and adds headers and method declarations. |
 | `src/TranslatorTest.java` | Plain Java assertions for the supported translation rules. |
+| `src/CppFormatter.java` | Final whitespace-only pass that indents generated C++ by brace nesting. |
 | `Example.java`, `Example.cpp` | Default Java demo and its generated C++ output. |
 | `tests/PrintExample.java`, `tests/MethodExample.java` | Runnable Java examples for printing and helper methods. |
 | `.gitignore` | Excludes compiled artifacts and build directories; the C++ demo remains tracked. |

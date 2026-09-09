@@ -41,12 +41,51 @@ public class TranslatorTest {
         testArrays();
         testArrayLengths();
         testMethods();
+        testIndentation();
         System.out.println("Passed " + checks + " translation checks.");
     }
 
     private static void require(boolean condition, String message) {
         if (!condition) throw new AssertionError(message);
         checks++;
+    }
+
+    private static void testIndentation() {
+        String newline = System.lineSeparator();
+        String raw = String.join(newline, "int main() {", "for (int i = 0; i < 3; i++) {",
+                "if (i > 1) {", "std::cout << i;", "} else {", "std::cout << 0;", "}", "}", "}");
+        String expected = String.join(newline, "int main() {", "    for (int i = 0; i < 3; i++) {",
+                "        if (i > 1) {", "            std::cout << i;", "        } else {",
+                "            std::cout << 0;", "        }", "    }", "}");
+        require(CppFormatter.format(raw).equals(expected), "Nested loops and inline else use four spaces");
+        require(CppFormatter.format(expected).equals(expected), "Formatting is idempotent");
+        String literals = String.join(newline, "void demo() {", "std::cout << \"\\\"{\";",
+                "char brace = '}';", "// }", "/* {", "} */", "int value = 1;", "}");
+        String formatted = CppFormatter.format(literals);
+        require(formatted.contains(newline + "    int value = 1;" + newline + "}"),
+                "Quoted braces, escaped quotes, and comments do not change indentation");
+        require(CppFormatter.format("#include <vector>\n\nint main() {\nstd::vector<int> a = {1, 2};\na[0] = 3;\n}\n")
+                .equals(String.join(newline, "#include <vector>", "", "int main() {",
+                        "    std::vector<int> a = {1, 2};", "    a[0] = 3;", "}", "")),
+                "Headers, blank lines, and initializers keep their structure");
+        require(raw.replaceAll("\\s", "").equals(CppFormatter.format(raw).replaceAll("\\s", "")),
+                "Formatting changes whitespace only");
+
+        String code = new Translator().translate(String.join(newline,
+                "public class Demo {", "public static void main(String[] args) {",
+                "int[] numbers = {1, 2};", "for (int i = 0; i < numbers.length; i++) {",
+                "System.out.println(numbers[i]);", "}", "}", "}"));
+        require(code.contains(String.join(newline, "    for (int i = 0; i < numbers.size(); i++) {",
+                "        std::cout << (numbers[i]) << std::endl;", "    }", "}")),
+                "Full translation applies formatting after length and print conversion");
+        String helpers = new Translator().translate(String.join(newline,
+                "public class Demo {", "public static void main(String[] args) {",
+                "Scanner scanner = new Scanner(System.in);", "int age = Integer.valueOf(scanner.nextLine());", "}",
+                "public static String greet(String name) {", "return \"Hello \" + name;", "}", "}"));
+        require(helpers.contains("        std::getline(std::cin, ageInputLine);")
+                && helpers.contains("        return translatedReturnText.str();")
+                && helpers.contains(newline + "std::string greet(std::string name) {"),
+                "Generated Scanner and string-return blocks are indented, with methods at column zero");
     }
 
     private static void testMethods() {
