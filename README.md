@@ -8,6 +8,8 @@ A small student project written in Java that translates a limited Java subset in
 
 The Windows installer includes the required Java runtime, so you do not need to install Java, Maven, or VS Code to run the application.
 
+> **Windows SmartScreen:** This student-project installer is not digitally code-signed, so Windows may display a **“Windows protected your PC”** warning. If you downloaded the installer from this official GitHub release, click **More info → Run anyway** to continue.
+
 [View the v1.0.1 release](https://github.com/guillaumebogaertGIT/java-to-cpp-translator/releases/tag/v1.0.1)
 
 ## Requirements
