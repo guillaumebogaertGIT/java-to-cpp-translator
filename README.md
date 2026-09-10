@@ -14,6 +14,12 @@ The Windows installer includes the required Java runtime, so you do not need to 
 
 ## Requirements
 
+The Windows build in this source tree is v1.0.3. See [INSTALLER.md](INSTALLER.md)
+for building, verifying an in-place upgrade, and collecting launch diagnostics.
+The published download above stays at v1.0.1 until a new release is uploaded.
+The app's top-right update button checks the latest GitHub release and opens its
+Windows download when a newer version is available.
+
 - JDK 21, with `java` and `javac` on your PATH and `JAVA_HOME` pointing to the JDK directory.
 - Optional: a C++11-or-newer compiler, such as `g++`, to compile generated output.
 - JavaFX dependencies are managed by Maven. The included Maven wrapper downloads Maven automatically; no separate Maven or JavaFX SDK installation is required. The first Maven run needs internet access.
@@ -34,7 +40,7 @@ A window titled **Java to C++ Translator** provides two large code areas. Paste 
 
 Use **Save C++ File** to choose a `.cpp` destination. File input/output uses UTF-8. **Clear** empties both areas, and the bottom status message reports success or errors. Editing Java clears the old output and disables saving until you translate again. Opening another file or clearing replaces the current editor contents. The C++ area is read-only but supports selection and copying. Unsupported Java that the translator passes through may still fail C++ compilation; the GUI does not compile generated code.
 
-Run all existing translator checks through Maven:
+Run all 110 translator checks and 9 updater/version checks through Maven:
 
 ```powershell
 .\mvnw.cmd test

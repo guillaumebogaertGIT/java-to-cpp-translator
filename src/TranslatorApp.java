@@ -1,33 +1,45 @@
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.css.PseudoClass;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /** Desktop interface. All translation rules remain in Translator. */
 public class TranslatorApp extends Application {
+    static {
+        AppDiagnostics.install();
+    }
     private final TextArea javaEditor = new TextArea();
     private final TextArea cppOutput = new TextArea();
     private final Label statusIndicator = new Label("●");
     private final Label statusText = new Label("Ready");
-    private final Label versionText = new Label("v1.0 • Guillaume Bogaert");
+    private final Label versionText = new Label("v" + AppVersion.current() + " • Guillaume Bogaert");
+    private final Button updateButton = new Button("↻");
     private String outputFileName = "Translated.cpp";
 
     @Override
@@ -41,6 +53,12 @@ public class TranslatorApp extends Application {
         title.getStyleClass().add("app-title");
         Label subtitle = new Label("Write Java, translate, and save your C++ code.");
         subtitle.getStyleClass().add("subtitle");
+        updateButton.getStyleClass().add("icon-button");
+        updateButton.setId("updateButton");
+        updateButton.setTooltip(new Tooltip("Check for updates"));
+        updateButton.setAccessibleText("Check for updates");
+        updateButton.setFocusTraversable(false);
+        updateButton.setOnAction(event -> checkForUpdates());
 
         Button translate = new Button("Translate");
         translate.setId("translateButton");
@@ -64,7 +82,11 @@ public class TranslatorApp extends Application {
         });
         HBox buttons = new HBox(10, translate, open, save, clear);
         buttons.getStyleClass().add("toolbar");
-        VBox header = new VBox(10, title, subtitle, buttons);
+        Region titleSpacer = new Region();
+        HBox.setHgrow(titleSpacer, Priority.ALWAYS);
+        HBox titleRow = new HBox(12, title, titleSpacer, updateButton);
+        titleRow.getStyleClass().add("title-row");
+        VBox header = new VBox(10, titleRow, subtitle, buttons);
         header.getStyleClass().add("app-header");
 
         javaEditor.setId("javaEditor");
@@ -106,6 +128,12 @@ public class TranslatorApp extends Application {
         stage.setMinHeight(480);
         stage.setTitle("Java to C++ Translator");
         stage.show();
+        System.err.println("Opened TranslatorApp v" + AppVersion.current());
+        getParameters().getRaw().stream()
+                .filter(argument -> argument.startsWith("--smoke-test="))
+                .findFirst()
+                .ifPresent(argument -> Platform.runLater(() -> PackagedSmokeTest.run(stage,
+                        argument.substring("--smoke-test=".length()))));
     }
 
     private VBox codePanel(String heading, TextArea area, boolean java) {
@@ -183,6 +211,77 @@ public class TranslatorApp extends Application {
             showStatus("Saved C++ to " + file.getAbsolutePath(), false);
         } catch (IOException | SecurityException exception) {
             showError("Could not save file", exception);
+        }
+    }
+
+    private void checkForUpdates() {
+        updateButton.setDisable(true);
+        showStatus("Checking for updates...", false);
+        CompletableFuture
+                .supplyAsync(() -> {
+                    try {
+                        return new UpdateChecker().checkForUpdates(AppVersion.current());
+                    } catch (IOException | InterruptedException | UpdateChecker.UpdateCheckException exception) {
+                        if (exception instanceof InterruptedException) {
+                            Thread.currentThread().interrupt();
+                        }
+                        throw new CompletionException(exception);
+                    }
+                })
+                .whenComplete((result, failure) -> Platform.runLater(() -> {
+                    updateButton.setDisable(false);
+                    if (failure != null) {
+                        showStatus("Unable to check for updates. Please try again later.", true);
+                        showUpdateError();
+                    } else {
+                        showUpdateResult(result);
+                    }
+                }));
+    }
+
+    private void showUpdateResult(UpdateChecker.UpdateResult result) {
+        if (!result.updateAvailable()) {
+            showStatus("You're up to date. Java to C++ Translator v" + result.currentVersion()
+                    + " is the latest version.", false);
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Check for Updates");
+            alert.setHeaderText("You're up to date.");
+            alert.setContentText("Java to C++ Translator v" + result.currentVersion()
+                    + " is the latest version.");
+            alert.showAndWait();
+            return;
+        }
+
+        showStatus("Update available: v" + result.latestVersion()
+                + " is available. You are using v" + result.currentVersion() + ".", false);
+        ButtonType download = new ButtonType("Download Update");
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Java to C++ Translator v" + result.latestVersion()
+                + " is available.\nYou are currently using v" + result.currentVersion() + ".", download,
+                ButtonType.CANCEL);
+        alert.setTitle("Update Available");
+        alert.setHeaderText("Update available");
+        alert.showAndWait()
+                .filter(button -> button == download)
+                .ifPresent(button -> openUpdatePage(result.downloadUrl()));
+    }
+
+    private void showUpdateError() {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Check for Updates");
+        alert.setHeaderText("Unable to check for updates.");
+        alert.setContentText("Please try again later.");
+        alert.showAndWait();
+    }
+
+    private void openUpdatePage(String url) {
+        try {
+            if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                showStatus("Download page: " + url, false);
+                return;
+            }
+            Desktop.getDesktop().browse(URI.create(url));
+        } catch (IOException | IllegalArgumentException | SecurityException exception) {
+            showStatus("Could not open the download page: " + url, true);
         }
     }
 

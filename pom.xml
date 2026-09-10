@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>student.translator</groupId>
     <artifactId>java-to-cpp-translator</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.3</version>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
@@ -24,6 +24,7 @@
 
     <build>
         <!-- Keep the existing student-project layout and plain Java test runner. -->
+        <finalName>java-to-cpp-translator</finalName>
         <sourceDirectory>src</sourceDirectory>
         <testSourceDirectory>src</testSourceDirectory>
         <plugins>
@@ -34,9 +35,11 @@
                 <configuration>
                     <excludes>
                         <exclude>TranslatorTest.java</exclude>
+                        <exclude>UpdateCheckerTest.java</exclude>
                     </excludes>
                     <testIncludes>
                         <testInclude>TranslatorTest.java</testInclude>
+                        <testInclude>UpdateCheckerTest.java</testInclude>
                     </testIncludes>
                 </configuration>
             </plugin>
@@ -54,6 +57,15 @@
                             <classpathScope>test</classpathScope>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>update-checker-tests</id>
+                        <phase>test</phase>
+                        <goals><goal>java</goal></goals>
+                        <configuration>
+                            <mainClass>UpdateCheckerTest</mainClass>
+                            <classpathScope>test</classpathScope>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
@@ -66,22 +78,18 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.3</version>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.7.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
                         <goals>
-                            <goal>shade</goal>
+                            <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                            <shadedArtifactAttached>false</shadedArtifactAttached>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>TranslatorApp</mainClass>
-                                </transformer>
-                            </transformers>
+                            <includeGroupIds>org.openjfx</includeGroupIds>
+                            <includeClassifiers>win</includeClassifiers>
+                            <outputDirectory>${project.build.directory}/javafx-modules</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
