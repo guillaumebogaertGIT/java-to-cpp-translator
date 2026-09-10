@@ -2,6 +2,14 @@
 
 A small student project written in Java that translates a limited Java subset into C++ source code. This is a **source-to-source translator** (or transpiler), not a complete Java compiler. The intended feature set is complete; the project focuses on readable translation rules rather than full language compatibility.
 
+## Download for Windows
+
+**[Download Java to C++ Translator v1.0.1](https://github.com/guillaumebogaertGIT/java-to-cpp-translator/releases/download/v1.0.1/Java.to.C%2B%2B.Translator-1.0.1.exe)**
+
+The Windows installer includes the required Java runtime, so you do not need to install Java, Maven, or VS Code to run the application.
+
+[View the v1.0.1 release](https://github.com/guillaumebogaertGIT/java-to-cpp-translator/releases/tag/v1.0.1)
+
 ## Requirements
 
 - JDK 21, with `java` and `javac` on your PATH and `JAVA_HOME` pointing to the JDK directory.
