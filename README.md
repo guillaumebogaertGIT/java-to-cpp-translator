@@ -1,24 +1,24 @@
 # Java-to-C++ Translator
 
-A small student project written in Java that translates a limited Java subset into C++ source code. This is a **source-to-source translator** (or transpiler), not a complete Java compiler. The intended feature set is complete; the project focuses on readable translation rules rather than full language compatibility.
+A small student/portfolio project written in Java that translates a limited Java subset into C++ source code. This is a **source-to-source translator** (or transpiler), not a complete Java compiler. The project focuses on readable translation rules rather than full language compatibility.
+
+The supported subset includes simple variables, arithmetic, braced conditionals and loops, console output, selected Scanner input patterns, one-dimensional arrays, and simple static methods. A JavaFX desktop interface provides Java input, C++ output, and file open/save actions; a command-line interface is also available. See [Supported Java subset](#supported-java-subset) for exact forms and limitations.
 
 ## Download for Windows
 
-**[Download Java to C++ Translator v1.0.1](https://github.com/guillaumebogaertGIT/java-to-cpp-translator/releases/download/v1.0.1/Java.to.C%2B%2B.Translator-1.0.1.exe)**
+**[Download Java to C++ Translator v1.0.3](https://github.com/guillaumebogaertGIT/java-to-cpp-translator/releases/tag/v1.0.3)**
 
-The Windows installer includes the required Java runtime, so you do not need to install Java, Maven, or VS Code to run the application.
+Open the release page and download the Windows `.exe` installer under **Assets**. It includes the required Java runtime, so you do not need to install Java, Maven, or VS Code to run the application. Launch the installed app from the Start menu.
+
+**Upgrading from v1.0.1:** Install v1.0.3 directly over your existing installation; no uninstall is needed. This upgrade path has been tested and leaves one Installed Apps entry. Windows may request administrator approval.
+
+v1.0.3 fixes the packaged JavaFX launch issue and includes an in-app update checker. Use the top-right **↻** button to check for future releases and open the Windows download when a newer version is available.
 
 > **Windows SmartScreen:** This student-project installer is not digitally code-signed, so Windows may display a **“Windows protected your PC”** warning. If you downloaded the installer from this official GitHub release, click **More info → Run anyway** to continue.
 
-[View the v1.0.1 release](https://github.com/guillaumebogaertGIT/java-to-cpp-translator/releases/tag/v1.0.1)
+[Read the v1.0.3 release notes](RELEASE_NOTES.md). For source builds, installer packaging, upgrade verification, and launch diagnostics, see [INSTALLER.md](INSTALLER.md).
 
-## Requirements
-
-The Windows build in this source tree is v1.0.3. See [INSTALLER.md](INSTALLER.md)
-for building, verifying an in-place upgrade, and collecting launch diagnostics.
-The published download above stays at v1.0.1 until a new release is uploaded.
-The app's top-right update button checks the latest GitHub release and opens its
-Windows download when a newer version is available.
+## Requirements for building from source
 
 - JDK 21, with `java` and `javac` on your PATH and `JAVA_HOME` pointing to the JDK directory.
 - Optional: a C++11-or-newer compiler, such as `g++`, to compile generated output.
@@ -223,3 +223,7 @@ These checks validate translated text and Java examples, not automatic Java/C++ 
 Translation flows through `Main` → `translateFile()` → `translate()` → `translateLine()` and its helpers → C++ text. File handling is separate from text translation, which makes unit tests straightforward.
 
 **Student explanation:** “My project is a rule-based transpiler. It reads Java as text, recognizes a small set of statement patterns, and writes equivalent C++ for that subset. It remembers some variable types to distinguish arithmetic from string concatenation and to recognize arrays. Unlike a full compiler, it does not build an abstract syntax tree or check the whole program's meaning, so its supported syntax and limitations are explicit.”
+
+## Development
+
+This project was developed with AI-assisted coding using OpenAI Codex. AI was used to help implement and test portions of the translator, packaging, and JavaFX interface. Project scope, feature decisions, testing, integration, and final design were directed and reviewed by the project team.
