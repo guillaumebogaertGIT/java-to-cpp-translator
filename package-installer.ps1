@@ -39,8 +39,35 @@ try {
         }
         if (Test-Path -LiteralPath $path) {
             $resolved = (Resolve-Path -LiteralPath $path).Path
-            if ($resolved -ne $path -or (Get-Item -LiteralPath $path).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            if ($resolved -ne $path) {
                 throw "Refusing to remove redirected directory: $path"
+            }
+            # OneDrive cloud directories also carry ReparsePoint. Permit only
+            # the CLOUD family (0x9000?01a), never junctions or symbolic links.
+            # Inspect each directory before descending, including the parents.
+            function Assert-SafeDirectory([string]$directory) {
+                $item = Get-Item -LiteralPath $directory -Force
+                if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                    $details = & fsutil reparsepoint query $directory 2>&1
+                    if ($LASTEXITCODE -ne 0 -or
+                        ($details | Select-Object -First 1) -notmatch '0x9000[0-9a-f]01a\s*$') {
+                        throw "Refusing to remove redirected or unknown directory: $directory"
+                    }
+                }
+            }
+            $parent = $path
+            while ($parent.Length -ge $root.TrimEnd('\').Length) {
+                Assert-SafeDirectory $parent
+                $parent = Split-Path -Parent $parent
+            }
+            $pending = [Collections.Generic.Queue[string]]::new()
+            $pending.Enqueue($path)
+            while ($pending.Count -gt 0) {
+                $directory = $pending.Dequeue()
+                Assert-SafeDirectory $directory
+                foreach ($child in Get-ChildItem -LiteralPath $directory -Directory -Force) {
+                    $pending.Enqueue($child.FullName)
+                }
             }
             Remove-Item -LiteralPath $path -Recurse -Force
         }

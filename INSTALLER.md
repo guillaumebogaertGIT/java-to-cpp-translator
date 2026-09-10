@@ -68,13 +68,28 @@ Windows administrator approval.
 
 ## Launch diagnostics
 
-Local v1.0.3 verification: JDK 21.0.10 clean Maven build, all 119 existing
-checks, native app-image smoke test, normal window rendering, and translation
-through Windows UI Automation passed. The EXE installer was produced. Windows
-Installer detected installed v1.0.2 under the same upgrade code, but the silent
-upgrade required administrator privileges (error 1730/exit 1603). The subsequent
-UAC request was canceled, so installed v1.0.3 and Start menu launch verification
-remain pending administrator approval.
+Local verification on 2026-09-10: JDK 21.0.12 clean Maven build, all 110
+translator checks and 9 updater/version checks, and the native app-image smoke
+test passed. The v1.0.3 EXE installer upgraded this machine's existing v1.0.1
+installation without uninstalling first. An unelevated silent attempt returned
+error 1730/exit 1603; rerunning with Windows administrator elevation succeeded
+with exit 0. Installed Apps contains exactly one entry at v1.0.3. The installed
+MSI's UpgradeCode is the UUID specified above.
+
+The installed native launcher passed the same smoke test. A normal Start menu
+shortcut launch opened TranslatorApp from Program Files. Windows UI Automation
+entered Java input, clicked Translate, and verified the generated C++ output.
+The visible updater button was clicked and successfully reported v1.0.3 as the
+latest version. This run tested v1.0.1 to v1.0.3; a separate v1.0.2 installation
+was not available on this machine.
+
+Repeated packaging also exposed a OneDrive cleanup issue: cloud directories
+carry the ReparsePoint attribute even though they are not junctions. Cleanup now
+accepts only the Windows CLOUD tag family and checks parents and descendant
+directories before removal. Other reparse tags still stop cleanup. Rebuilding
+inside OneDrive passed, and a nested-junction check confirmed that cleanup
+refuses the junction and preserves its target. See Microsoft's
+[reparse tag documentation](https://learn.microsoft.com/en-us/windows/win32/fileio/reparse-point-tags).
 
 Application startup and uncaught errors are appended to
 `%LOCALAPPDATA%\Java to C++ Translator\logs\application.log`.
